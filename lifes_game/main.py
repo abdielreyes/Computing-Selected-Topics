@@ -1,0 +1,124 @@
+import sys, pygame
+import tkinter as tk
+from tkinter import filedialog
+import matplotlib.pyplot as plt
+import numpy as np
+
+from game import Game
+
+Clock = pygame.time.Clock()
+fps = 1
+size = width, height = 700,700
+
+black = (0,0,0)
+white = (255,255,255)
+gray = (70,70,70)
+red = (255,0,0)
+green = (0,255,0)
+blue = (0,0,255)
+pink = (255,192,203)
+colors = [white,black,gray,red,green,blue,pink]
+
+
+def mouse_click(world: Game, mouse_x: int, mouse_y:int)->None:
+    x = int(mouse_x/(world.get_cell_size) - (world.get_offset_x/world.get_cell_size))
+    y = int(mouse_y/(world.get_cell_size) - (world.get_offset_y/world.get_cell_size))
+    print(x,y)
+    print(world.get_offset_x,world.get_offset_y)
+    if world.get_cell_value(x,y) == world.live:
+        world.set_cell_value(x,y,world.dead)
+    else:
+        world.set_cell_value(x,y,world.live)
+
+def graph(b : list,s:int):
+    s = np.array(s)
+    population = np.divide(np.array(b),s)
+    populationlog = np.divide(np.log10(population),s)
+    plt.plot(population,label="Densidad de poblacion")
+    plt.plot(populationlog, label="Densidad de poblacion base 10")
+    plt.legend()
+    plt.show()
+    
+
+
+def main():
+    n,m = 0,0
+    pygame.init()
+    screen = pygame.display.set_mode(size)
+    title = "Game of Life"
+    pygame.display.set_caption(title)
+    world = Game()
+    
+    if len(sys.argv) >1:
+        print(sys.argv)
+        n = int(sys.argv[1])
+        m = int(sys.argv[2])
+        color_live = int(sys.argv[3])
+        color_dead = int(sys.argv[4])
+        
+        world.set_color(colors[color_live],colors[color_dead])
+        world.set_size(n,m)
+        world.__init__()
+    running = False
+    speed = 20
+    zoom = 1
+    plot_pop = []
+    size_map = world.get_width * world.get_height
+    while 1:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                print("End")
+                sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                x, y = pygame.mouse.get_pos()
+                mouse_click(world,x,y)
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RIGHT:
+                    world.set_offset_x(world.get_offset_x+speed)
+                if event.key == pygame.K_LEFT:
+                    world.set_offset_x(world.get_offset_x-speed)
+                if event.key == pygame.K_DOWN:
+                    world.set_offset_y(world.get_offset_y+speed)
+                if event.key == pygame.K_UP:
+                    world.set_offset_y(world.get_offset_y-speed)
+                if event.key == pygame.K_g and (not running):
+                    graph(plot_pop,size_map)
+                if event.key == pygame.K_SPACE:
+                    running = not running
+                if event.key == pygame.K_z:
+                    world.set_cell_size(world.get_cell_size+zoom)
+                if event.key == pygame.K_x:
+                    world.set_cell_size(world.get_cell_size-zoom)
+                if event.key == pygame.K_r:
+                    world.init_map()
+                    plot_pop = []
+                if event.key == pygame.K_l:
+                    file_path = filedialog.askopenfilename(filetypes=(
+                        ("Text Files","*.txt"),
+                        ("All Files", "*.*")
+                    ))
+                    print(file_path)
+                    if file_path != "":
+                        world.load_file(file_path)
+                if event.key == pygame.K_s:
+                    file_path = filedialog.asksaveasfilename(filetypes=(
+                        ("Text Files","*.txt"),
+                        ("All Files", "*.*")
+                    ))
+                    if file_path != "":
+                        world.save_file(file_path)
+        if running:
+            world.update()
+            plot_pop.append(world.get_live_cells)
+            
+        screen.fill((50,50,50))
+        world.draw(screen)
+
+        Clock.tick(60)
+        pygame.display.set_caption(title+f" Running: {running} Iterations: {world.get_iterations}  Active Cells: {world.get_live_cells}")
+        pygame.display.flip()
+
+
+
+if __name__ == "__main__":
+    main()
